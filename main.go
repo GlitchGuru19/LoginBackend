@@ -7,22 +7,33 @@ import (
 )
 
 func main(){
-	var
-	(
-		sUsername string
-		username string = "Carlos"
-		//sPassword string
-		password string = "Falcon12@"
+
+	// stored passwords
+	correctUsername := "Carlos"
+	correctPassword := "Falcon12@"
+	
+	// Get user input
+	var (
+		username string
+		password string
 	)
-	fmt.Println("\nWelcome to the Login System")
-	fmt.Println("\n\nPlease Enter your credentials")
-	fmt.Print("\nEnter your username: ")
+
+	fmt.Println("Welcome to the Login System")
+	fmt.Println()
+	fmt.Print("Enter the username: ")
 	fmt.Scanln(&username)
-	fmt.Print("Enter your password: ")
+
+	fmt.Print("Enter the password: ")
 	fmt.Scanln(&password)
 
-	//fmt.Printf("This is your username: %s \nand this is your password: %s", username, password)
-	if username == sUsername {
-		fmt.Println("Access granted")
+	// Check credentials
+	if username == correctUsername && password == correctPassword{
+		fmt.Println("Login successful!")
+	} else if username == correctUsername && password != correctPassword{
+		fmt.Println("Wrong password.")
+	}else if username != correctUsername && password == correctPassword{
+		fmt.Println("No such username.")
+	} else {
+		fmt.Println("Both username and password are incorect.")
 	}
 }
