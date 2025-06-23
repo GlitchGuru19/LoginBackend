@@ -6,6 +6,12 @@ import (
 	// creatig access tokens and connecting to a database
 )
 
+func Message(){
+	fmt.Println("Welcome to the system")
+	fmt.Println("This will contain sessions")
+	fmt.Println("This will also contain registration")
+}
+
 func main(){
 
 	// User credentials stored in parallel slices
