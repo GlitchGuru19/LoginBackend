@@ -12,6 +12,10 @@ func Message(){
 	fmt.Println("This will also contain registration")
 }
 
+func Dump(){
+	fmt.Println("THis is an empty function for now")
+}
+
 func main(){
 
 	// User credentials stored in parallel slices
