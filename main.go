@@ -15,6 +15,9 @@ func Message(){
 func Dump(){
 	fmt.Println("THis is an empty function for now")
 }
+func Dumper(){
+	fmt.Println("THis is an empty function for now")
+}
 
 func main(){
 
