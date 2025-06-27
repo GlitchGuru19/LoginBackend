@@ -19,6 +19,11 @@ func Dumper(){
 	fmt.Println("THis is an empty function for now")
 }
 
+func Thank(){
+	// This is a thank you message
+	fmt.Println("THank you for using the system")
+}
+
 func main(){
 
 	// User credentials stored in parallel slices
