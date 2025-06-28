@@ -12,13 +12,6 @@ func Message(){
 	fmt.Println("This will also contain registration")
 }
 
-func Dump(){
-	fmt.Println("THis is an empty function for now")
-}
-func Dumper(){
-	fmt.Println("THis is an empty function for now")
-}
-
 func Thank(){
 	// This is a thank you message
 	fmt.Println("THank you for using the system")
@@ -27,7 +20,7 @@ func Thank(){
 func main(){
 
 	// User credentials stored in parallel slices
-	emails := []string{"admin@gmail.com","user1@gmail.com","guest@gmail.com"}
+	trials := []string{"admin@gmail.com","user1@gmail.com","guest@gmail.com"}
 	usernames := []string{"admin", "user1", "guest"}
 	passwords := []string{"password123","mypass123","welcome123"}
 
