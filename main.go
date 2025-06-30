@@ -17,6 +17,10 @@ func Thank(){
 	fmt.Println("THank you for using the system")
 }
 
+func PrintSUm(){
+	fmt.Println("Hello")
+}
+
 func main(){
 
 	// User credentials stored in parallel slices
