@@ -8,86 +8,107 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
+
+	"golang.org/x/crypto/bcrypt"
+	"github.com/joho/godotenv"
 )
 
-// User struct defines the structure of a user in the system.
-// Each user has an Email, Username, and Password.
+// User holds user login information
 type User struct {
-	Email    string
-	Username string
-	Password string
+	Email        string
+	Username     string
+	HashedPasswd string
 }
 
-// Message displays a welcome message when the system starts.
-func Message() {
-	fmt.Println("Welcome to the system")
-	fmt.Println("This will contain sessions")
-	fmt.Println("This will also contain registration")
+// Load environment variable from .env file
+func loadEnv() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 }
 
-// Thank displays a thank-you message after successful login.
+// HashPassword hashes a password using bcrypt and a secret pepper
+func HashPassword(password string, pepper string) (string, error) {
+	// Combine password + pepper before hashing
+	salted := password + pepper
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(salted), bcrypt.DefaultCost)
+	return string(hashedBytes), err
+}
+
+// ComparePassword compares a plain password with a hashed password
+func ComparePassword(inputPassword string, pepper string, hashedPassword string) bool {
+	salted := inputPassword + pepper
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(salted))
+	return err == nil
+}
+
 func Thank() {
 	fmt.Println("Thank you for using the system")
 }
 
 func main() {
-	// users is a map storing User data.
-	// Key: Username
-	// Value: Corresponding User struct (with email, username, password)
-	users := map[string]User{
-		"admin": {"admin@gmail.com", "admin", "password123"},
-		"user1": {"user1@gmail.com", "user1", "mypass123"},
-		"guest": {"guest@gmail.com", "guest", "welcome123"},
+	loadEnv()
+
+	// Get pepper from env
+	pepper := os.Getenv("PEPPER")
+
+	// Simulate registration: pre-hash user passwords
+	users := map[string]User{}
+
+	// Pre-register 3 users with salted + hashed passwords
+	rawUsers := []struct {
+		email    string
+		username string
+		password string
+	}{
+		{"admin@gmail.com", "admin", "password123"},
+		{"user1@gmail.com", "user1", "mypass123"},
+		{"guest@gmail.com", "guest", "welcome123"},
 	}
 
-	// Maximum number of allowed login attempts
+	for _, u := range rawUsers {
+		hashed, err := HashPassword(u.password, pepper)
+		if err != nil {
+			log.Fatal("Failed to hash password:", err)
+		}
+		users[u.username] = User{u.email, u.username, hashed}
+	}
+
+	// Login attempt logic
 	maxAttempts := 3
-	// Track how many attempts the user has made
 	attempts := 0
 
-	// Start the login loop
 	for attempts < maxAttempts {
-		// Variables to store user input
 		var inputUser, inputPass string
 
-		// Display login prompt
-		fmt.Println("Welcome to the Login System")
-		fmt.Print("Enter the username: ")
+		fmt.Println("Welcome to the Secure Login System")
+		fmt.Print("Enter your username: ")
 		fmt.Scanln(&inputUser)
-
-		fmt.Print("Enter the password: ")
+		fmt.Print("Enter your password: ")
 		fmt.Scanln(&inputPass)
 
-		// Attempt to find the user by username (key in the map)
 		user, exists := users[inputUser]
-
-		// If user not found, display error
 		if !exists {
 			fmt.Println("Error: Username not found.")
 		} else {
-			// If user exists, check if the password matches
-			if user.Password == inputPass {
-				// Successful login
-				fmt.Println("\nLogin successful! Welcome,", inputUser)
+			if ComparePassword(inputPass, pepper, user.HashedPasswd) {
+				fmt.Println("\n✅ Login successful! Welcome,", inputUser)
 				Thank()
-				return // Exit the program after successful login
+				return
 			} else {
-				// Password was incorrect
-				fmt.Println("Error: Incorrect Password.")
+				fmt.Println("❌ Incorrect password.")
 			}
 		}
 
-		// Increment failed attempts
 		attempts++
-		// Calculate remaining attempts
 		remaining := maxAttempts - attempts
-
-		// Inform the user how many attempts remain or lock the system
 		if remaining > 0 {
-			fmt.Printf("You have %d attempts remaining\n\n", remaining)
+			fmt.Printf("You have %d attempt(s) remaining.\n\n", remaining)
 		} else {
-			fmt.Println("\nMaximum login attempts reached.")
-			fmt.Println("System Locked!")
+			fmt.Println("\n🚫 Maximum login attempts reached. System Locked.")
 		}
 	}
 }
