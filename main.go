@@ -2,42 +2,41 @@ package main
 
 import (
 	"fmt"
-	// packages for salting and hashing the passwords,
-	// creatig access tokens and connecting to a database
 )
 
-func Message(){
+// Define a User struct to hold individual user data
+type User struct {
+	Email    string
+	Username string
+	Password string
+}
+
+// Welcome message function
+func Message() {
 	fmt.Println("Welcome to the system")
 	fmt.Println("This will contain sessions")
 	fmt.Println("This will also contain registration")
 }
 
-func Thank(){
-	// This is a thank you message
-	fmt.Println("THank you for using the system")
+// Thank you message
+func Thank() {
+	fmt.Println("Thank you for using the system")
 }
 
-func PrintSUm(){
-	fmt.Println("Hello")
-}
+// Main program
+func main() {
+	// Slice of Users
+	users := []User{
+		{"admin@gmail.com", "admin", "password123"},
+		{"user1@gmail.com", "user1", "mypass123"},
+		{"guest@gmail.com", "guest", "welcome123"},
+	}
 
-func main(){
-
-	// User credentials stored in parallel slices
-	trials := []string{"admin@gmail.com","user1@gmail.com","guest@gmail.com"}
-	usernames := []string{"admin", "user1", "guest"}
-	passwords := []string{"password123","mypass123","welcome123"}
-
-	// Login attempts
 	maxAttempts := 3
 	attempts := 0
 
 	for attempts < maxAttempts {
-		// Get user input
-		var (
-			inputUser string
-			inputPass string
-		)
+		var inputUser, inputPass string
 
 		fmt.Println("Welcome to the Login System")
 		fmt.Println()
@@ -47,43 +46,34 @@ func main(){
 		fmt.Print("Enter the password: ")
 		fmt.Scanln(&inputPass)
 
-		// Check credentials 
+		// Check login
 		userFound := false
-		correctPassword := false
-		var userIndex int
 
-		// Search for username
-		for i, username := range usernames{
-			if username == inputUser{
+		for _, user := range users {
+			if user.Username == inputUser {
 				userFound = true
-				userIndex = i
-				break
+				if user.Password == inputPass {
+					fmt.Println("\nLogin successful! Welcome,", inputUser)
+					Thank()
+					return
+				} else {
+					fmt.Println("Error: Incorrect Password.")
+					break
+				}
 			}
 		}
 
-		// Check password if user is found
-		if userFound {
-			if passwords[userIndex] == inputPass {
-				fmt.Println("\nLogin succesful! Welcome, ", inputUser)
-				return
-			} else {
-				correctPassword = false
-			}
-		}
-
-		// Give appropriate error message
-		switch {
-		case !userFound:
+		if !userFound {
 			fmt.Println("Error: Username not found.")
-		case !correctPassword:
-			fmt.Println("Error: Incorrect Password.")
 		}
+
 		attempts++
 		remaining := maxAttempts - attempts
 		if remaining > 0 {
-			fmt.Printf("You have %d attempts remaining\n", remaining)
+			fmt.Printf("You have %d attempts remaining\n\n", remaining)
 		} else {
-			fmt.Println("\nMaximum login attempts reached")
+			fmt.Println("\nMaximum login attempts reached.")
+			fmt.Println("System Locked!")
 		}
 	}
 }
