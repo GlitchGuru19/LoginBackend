@@ -1,0 +1,108 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"golang.org/x/crypto/bcrypt"
+	"github.com/joho/godotenv"
+)
+
+type User struct {
+	Email        string
+	Username     string
+	HashedPasswd string
+}
+
+func loadEnv() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+}
+
+func HashPassword(password string, pepper string) (string, error) {
+	salted := password + pepper
+	fmt.Println("[DEBUG] Salted password before hashing:", salted) // <-- show salted string
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(salted), bcrypt.DefaultCost)
+	return string(hashedBytes), err
+}
+
+func ComparePassword(inputPassword string, pepper string, hashedPassword string) bool {
+	salted := inputPassword + pepper
+	fmt.Println("[DEBUG] Salted user input password:", salted) // <-- show input salted
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(salted))
+	return err == nil
+}
+
+func Thank() {
+	fmt.Println("Thank you for using the system")
+}
+
+func main() {
+	loadEnv()
+	pepper := os.Getenv("PEPPER")
+	if pepper == "" {
+		log.Fatal("PEPPER is not set in .env")
+	}
+
+	// Map to store users
+	users := map[string]User{}
+
+	// Simulate pre-registration
+	rawUsers := []struct {
+		email    string
+		username string
+		password string
+	}{
+		{"admin@gmail.com", "admin", "password123"},
+		{"user1@gmail.com", "user1", "mypass123"},
+		{"guest@gmail.com", "guest", "welcome123"},
+	}
+
+	// Hash and store passwords
+	for _, u := range rawUsers {
+		hashed, err := HashPassword(u.password, pepper)
+		if err != nil {
+			log.Fatal("Hashing failed:", err)
+		}
+		users[u.username] = User{u.email, u.username, hashed}
+		fmt.Printf("[DEBUG] Stored hash for %s: %s\n\n", u.username, hashed) // <-- show stored hash
+	}
+
+	// Login logic
+	maxAttempts := 3
+	attempts := 0
+
+	for attempts < maxAttempts {
+		var inputUser, inputPass string
+
+		fmt.Println("Welcome to the Secure Login System")
+		fmt.Print("Enter your username: ")
+		fmt.Scanln(&inputUser)
+
+		fmt.Print("Enter your password: ")
+		fmt.Scanln(&inputPass)
+
+		user, exists := users[inputUser]
+		if !exists {
+			fmt.Println("Error: Username not found.")
+		} else {
+			if ComparePassword(inputPass, pepper, user.HashedPasswd) {
+				fmt.Println("\n✅ Login successful! Welcome,", inputUser)
+				Thank()
+				return
+			} else {
+				fmt.Println("❌ Incorrect password.")
+			}
+		}
+
+		attempts++
+		if attempts < maxAttempts {
+			fmt.Printf("You have %d attempt(s) remaining.\n\n", maxAttempts-attempts)
+		} else {
+			fmt.Println("\n🚫 Maximum login attempts reached. System Locked.")
+		}
+	}
+}

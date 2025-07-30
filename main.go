@@ -7,108 +7,198 @@
 package main
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
-	"log"
 	"os"
+	"strings"
+	"syscall"
 
 	"golang.org/x/crypto/bcrypt"
-	"github.com/joho/godotenv"
+	"golang.org/x/term"
 )
 
-// User holds user login information
 type User struct {
-	Email        string
-	Username     string
-	HashedPasswd string
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Role     string `json:"role"`
 }
 
-// Load environment variable from .env file
-func loadEnv() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+type UserStore struct {
+	Users   []User `json:"users"`
+	NextID  int    `json:"next_id"`
 }
 
-// HashPassword hashes a password using bcrypt and a secret pepper
-func HashPassword(password string, pepper string) (string, error) {
-	// Combine password + pepper before hashing
-	salted := password + pepper
-	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(salted), bcrypt.DefaultCost)
-	return string(hashedBytes), err
-}
-
-// ComparePassword compares a plain password with a hashed password
-func ComparePassword(inputPassword string, pepper string, hashedPassword string) bool {
-	salted := inputPassword + pepper
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(salted))
-	return err == nil
-}
-
-func Thank() {
-	fmt.Println("Thank you for using the system")
-}
+const usersFile = "users.json"
 
 func main() {
-	loadEnv()
+	fmt.Println("=== LocalLink Signup System ===")
+	fmt.Println()
 
-	// Get pepper from env
-	pepper := os.Getenv("PEPPER")
+	for {
+		fmt.Println("1. Sign Up")
+		fmt.Println("2. View All Users (for testing)")
+		fmt.Println("3. Exit")
+		fmt.Print("Choose an option: ")
 
-	// Simulate registration: pre-hash user passwords
-	users := map[string]User{}
+		var choice string
+		fmt.Scanln(&choice)
 
-	// Pre-register 3 users with salted + hashed passwords
-	rawUsers := []struct {
-		email    string
-		username string
-		password string
-	}{
-		{"admin@gmail.com", "admin", "password123"},
-		{"user1@gmail.com", "user1", "mypass123"},
-		{"guest@gmail.com", "guest", "welcome123"},
+		switch choice {
+		case "1":
+			signUp()
+		case "2":
+			viewUsers()
+		case "3":
+			fmt.Println("Goodbye!")
+			return
+		default:
+			fmt.Println("Invalid option. Please try again.")
+		}
+		fmt.Println()
+	}
+}
+
+func signUp() {
+	fmt.Println("\n--- Sign Up ---")
+	reader := bufio.NewReader(os.Stdin)
+
+	// Get user details
+	fmt.Print("Enter your name: ")
+	name, _ := reader.ReadString('\n')
+	name = strings.TrimSpace(name)
+
+	fmt.Print("Enter your email: ")
+	email, _ := reader.ReadString('\n')
+	email = strings.TrimSpace(email)
+
+	// Validate email format (basic check)
+	if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+		fmt.Println("❌ Invalid email format!")
+		return
 	}
 
-	for _, u := range rawUsers {
-		hashed, err := HashPassword(u.password, pepper)
-		if err != nil {
-			log.Fatal("Failed to hash password:", err)
+	// Check if email already exists
+	userStore := loadUsers()
+	for _, user := range userStore.Users {
+		if user.Email == email {
+			fmt.Println("❌ Email already exists!")
+			return
 		}
-		users[u.username] = User{u.email, u.username, hashed}
 	}
 
-	// Login attempt logic
-	maxAttempts := 3
-	attempts := 0
+	fmt.Print("Enter your password: ")
+	passwordBytes, err := term.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		fmt.Println("\n❌ Error reading password!")
+		return
+	}
+	password := string(passwordBytes)
+	fmt.Println() // New line after password input
 
-	for attempts < maxAttempts {
-		var inputUser, inputPass string
+	if len(password) < 6 {
+		fmt.Println("❌ Password must be at least 6 characters long!")
+		return
+	}
 
-		fmt.Println("Welcome to the Secure Login System")
-		fmt.Print("Enter your username: ")
-		fmt.Scanln(&inputUser)
-		fmt.Print("Enter your password: ")
-		fmt.Scanln(&inputPass)
+	fmt.Print("Enter your role (user/admin): ")
+	role, _ := reader.ReadString('\n')
+	role = strings.TrimSpace(role)
 
-		user, exists := users[inputUser]
-		if !exists {
-			fmt.Println("Error: Username not found.")
-		} else {
-			if ComparePassword(inputPass, pepper, user.HashedPasswd) {
-				fmt.Println("\n✅ Login successful! Welcome,", inputUser)
-				Thank()
-				return
-			} else {
-				fmt.Println("❌ Incorrect password.")
-			}
-		}
+	// Validate role
+	if role != "user" && role != "admin" {
+		fmt.Println("❌ Role must be either 'user' or 'admin'!")
+		return
+	}
 
-		attempts++
-		remaining := maxAttempts - attempts
-		if remaining > 0 {
-			fmt.Printf("You have %d attempt(s) remaining.\n\n", remaining)
-		} else {
-			fmt.Println("\n🚫 Maximum login attempts reached. System Locked.")
-		}
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		fmt.Println("❌ Failed to hash password!")
+		return
+	}
+
+	// Create new user
+	newUser := User{
+		ID:       userStore.NextID,
+		Name:     name,
+		Email:    email,
+		Password: string(hashedPassword),
+		Role:     role,
+	}
+
+	// Add user to store
+	userStore.Users = append(userStore.Users, newUser)
+	userStore.NextID++
+
+	// Save to file
+	err = saveUsers(userStore)
+	if err != nil {
+		fmt.Println("❌ Failed to save user data!")
+		return
+	}
+
+	fmt.Printf("✅ User '%s' created successfully with ID: %d\n", name, newUser.ID)
+}
+
+func loadUsers() UserStore {
+	var userStore UserStore
+
+	// Check if file exists
+	if _, err := os.Stat(usersFile); os.IsNotExist(err) {
+		// File doesn't exist, return empty store
+		userStore.NextID = 1
+		return userStore
+	}
+
+	// Read file
+	data, err := os.ReadFile(usersFile)
+	if err != nil {
+		fmt.Printf("❌ Error reading users file: %v\n", err)
+		userStore.NextID = 1
+		return userStore
+	}
+
+	// Parse JSON
+	err = json.Unmarshal(data, &userStore)
+	if err != nil {
+		fmt.Printf("❌ Error parsing users file: %v\n", err)
+		userStore.NextID = 1
+		return userStore
+	}
+
+	// Ensure NextID is set properly
+	if userStore.NextID == 0 {
+		userStore.NextID = len(userStore.Users) + 1
+	}
+
+	return userStore
+}
+
+func saveUsers(userStore UserStore) error {
+	data, err := json.MarshalIndent(userStore, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(usersFile, data, 0644)
+}
+
+func viewUsers() {
+	fmt.Println("\n--- All Users ---")
+	userStore := loadUsers()
+
+	if len(userStore.Users) == 0 {
+		fmt.Println("No users found.")
+		return
+	}
+
+	fmt.Printf("%-5s %-20s %-30s %-10s\n", "ID", "Name", "Email", "Role")
+	fmt.Println(strings.Repeat("-", 70))
+
+	for _, user := range userStore.Users {
+		fmt.Printf("%-5d %-20s %-30s %-10s\n", user.ID, user.Name, user.Email, user.Role)
 	}
 }
